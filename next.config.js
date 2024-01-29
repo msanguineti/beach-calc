@@ -1,6 +1,8 @@
-/** @type {import('next/config').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  images: { unoptimized: true },
+  basePath: process.env.NODE_ENV === 'production' ? '/beach-calc' : '',
 }
 
 /** @type {import('@serwist/next')} */
