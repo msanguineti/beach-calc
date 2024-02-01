@@ -162,7 +162,7 @@ const Settings = () => {
   const handleOpen = async () => {
     const file = await fileOpen({
       description: 'Carica le impostazioni',
-      extensions: ['json'],
+      extensions: ['.json'],
       mimeTypes: ['application/json'],
       startIn: 'documents',
     })
