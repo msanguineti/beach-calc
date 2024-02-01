@@ -1,16 +1,17 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  images: { unoptimized: true },
-  basePath: process.env.NODE_ENV === 'production' ? '/beach-calc' : '',
+if (process.env.NODE_ENV === 'production') {
+  const withSerwist = require('@serwist/next').default({
+    swSrc: 'src/app/sw.ts',
+    swDest: 'public/sw.js',
+  })
+
+  module.exports = withSerwist({
+    output: 'export',
+    images: { unoptimized: true },
+    basePath: '/beach-calc',
+  })
+} else {
+  module.exports = {
+    output: 'export',
+    images: { unoptimized: true },
+  }
 }
-
-/** @type {import('@serwist/next')} */
-const withSerwist = require('@serwist/next').default({
-  swSrc: 'src/app/sw.ts',
-  swDest: 'public/sw.js',
-})
-
-module.exports = withSerwist({
-  ...nextConfig,
-})

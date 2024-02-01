@@ -2,24 +2,19 @@ import { Listbox, Transition } from '@headlessui/react'
 import {
   ArrowPathIcon,
   CheckIcon,
-  ChevronUpDownIcon,
+  ChevronDownIcon,
   TrashIcon,
 } from '@heroicons/react/20/solid'
-import { Fragment } from 'react'
+import { Fragment, useEffect } from 'react'
+import Button from './Button'
 import { SectionTitle } from './Calculator'
-
-const categories = [
-  { id: '1', name: 'Categoria 1' },
-  { id: '2', name: 'Categoria 2' },
-  { id: '3', name: 'Categoria 3' },
-]
+import { InputField } from './InputField'
+import { SettingsType, defaultSettings, isValidSettings } from './Settings'
 
 export type RowData = {
   id: number
   from?: string
   to?: string
-  // fromInputType: 'text' | 'date'
-  // toInputType: 'text' | 'date'
   category?: string
   extraEntrances?: number
   error?: {
@@ -28,8 +23,9 @@ export type RowData = {
   }
 }
 
+// eslint-disable-next-line unicorn/prevent-abbreviations
 type DisclosureRowProps = {
-  type: SectionTitle
+  section: SectionTitle
   row: RowData
   index: number
   categories?: { id: string; name: string }[]
@@ -39,16 +35,7 @@ type DisclosureRowProps = {
     value: string | number,
   ) => void
   removeRow: (index: number) => void
-  addRow: () => void
-}
-
-const isDisabled = (type: string, row: RowData): boolean | undefined => {
-  return (
-    (type === 'Entrate' && (row.extraEntrances ?? 0) <= 0) ||
-    (type === 'Permanenza' && !row.category) ||
-    !Date.parse(row.from ?? '') ||
-    !Date.parse(row.to ?? '')
-  )
+  minMax?: { from: string; to: string }
 }
 
 const rowHasData = (row: RowData) =>
@@ -60,138 +47,164 @@ const rowHasData = (row: RowData) =>
   )
 
 const DisclosureRow: React.FC<DisclosureRowProps> = ({
-  type,
+  section,
   row,
   index,
   updateRow,
   removeRow,
-  addRow,
+  minMax,
 }) => {
-  console.log('rendering row', row)
+  const settings: SettingsType = JSON.parse(
+    localStorage.getItem('bufferSettings') ?? JSON.stringify(defaultSettings),
+  ) as SettingsType
+
+  useEffect(() => {
+    if (rowHasData(row) && !isValidSettings(settings)) {
+      updateRow(index, 'clear', '')
+    }
+  }, [settings, row, index, updateRow])
 
   return (
     <Fragment>
-      <div className="mt-2 flex items-center gap-2 first:mt-3 last:mb-3">
-        <input
+      <div className="mt-2 flex items-center gap-2 last:mb-3">
+        <InputField
+          id="from"
           type="date"
-          placeholder="Dal"
-          value={row.from}
-          onChange={(e) => updateRow(index, 'from', e.target.value)}
-          className={`w-1/4 rounded-lg px-3 py-2 text-left shadow-md  disabled:bg-gray-400 sm:text-sm ${row.error?.field === 'from' || row.error?.field === 'both' ? 'ring-2 ring-red-500 focus-visible:outline-none focus-visible:ring-2  focus-visible:ring-red-500' : ''}`}
+          label="dal"
+          value={row.from as string}
+          width="w-1/4"
+          onChange={(event) => updateRow(index, 'from', event.target.value)}
+          props={{
+            min:
+              section === 'Permanenza'
+                ? settings.periods[0].start
+                : minMax?.from,
+            disabled: !isValidSettings(settings),
+            max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
+          }}
         />
 
-        <input
+        <InputField
+          id="to"
           type="date"
-          placeholder="Al"
-          disabled={!row.from}
-          min={row.from}
-          value={row.to}
-          onChange={(e) => updateRow(index, 'to', e.target.value)}
-          className={`w-1/4 rounded-lg px-3 py-2 text-left shadow-md invalid:ring-2 invalid:ring-red-500 invalid:focus-visible:outline-none disabled:bg-gray-200 sm:text-sm ${row.error?.field === 'to' || row.error?.field === 'both' ? 'ring-2 ring-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500' : ''}`}
+          label="al"
+          value={row.to as string}
+          width="w-1/4"
+          onChange={(event) => updateRow(index, 'to', event.target.value)}
+          props={{
+            min: row.from,
+            disabled: !row.from,
+            max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
+          }}
         />
 
         {/* Category listbox for Permanenza */}
-        {type === 'Permanenza' && (
+        {section === 'Permanenza' && (
           <Listbox
             value={row.category}
             onChange={(value) => updateRow(index, 'category', value)}
+            disabled={!row.from || settings.periods[0].categories.length === 0}
+            as={'div'}
+            className="relative flex w-1/4 flex-col rounded-lg bg-white p-2 shadow ui-disabled:bg-gray-200 ui-disabled:text-jet-800"
           >
-            <div className="relative w-1/4">
-              <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white py-2 pl-3 pr-10 text-left shadow-md  sm:text-sm">
-                <span
-                  className={`block truncate ${row.category ? '' : 'text-gray-400'}`}
-                >
-                  {row.category ?? 'Selezionare categoria'}
-                </span>
-                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronUpDownIcon
-                    className="h-5 w-5 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </span>
-              </Listbox.Button>
-              <Transition
-                as={Fragment}
-                leave="transition ease-in duration-100"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Listbox.Options className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
-                  {categories.map((category) => (
-                    <Listbox.Option
-                      className="relative cursor-default select-none py-2 pl-10 pr-4 ui-active:bg-amber-100 ui-active:text-amber-900"
-                      key={category.id}
-                      value={category.name}
-                    >
-                      {({ selected }) => (
-                        <>
-                          <span
-                            className={`block truncate ${
-                              selected ? 'font-medium' : 'font-normal'
-                            }`}
-                          >
-                            {category.name}
+            <label
+              htmlFor="category"
+              className={`${row.from ? 'text-jet-700' : ''} text-sm`}
+            >
+              categoria
+            </label>
+            <Listbox.Button
+              id="category"
+              className="relative w-full cursor-default pl-1 text-left text-base"
+            >
+              <span className={`block truncate`}>
+                {row.category ? (
+                  <>
+                    {row.category}
+                    <sup>a</sup>
+                  </>
+                ) : (
+                  '...'
+                )}
+              </span>
+              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
+                <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+            </Listbox.Button>
+            <Transition
+              as={Fragment}
+              leave="transition ease-in duration-100"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <Listbox.Options className="absolute -left-0 z-20 mt-14 max-h-60 w-full overflow-auto rounded-md bg-white py-1 shadow-md ring-1 ring-black/5 focus:outline-none">
+                {settings.periods[0].categories.map((category) => (
+                  <Listbox.Option
+                    className="relative cursor-default select-none py-2 pl-10 pr-4 ui-active:bg-amber-100 ui-active:text-amber-900"
+                    key={category.id}
+                    value={category.name}
+                  >
+                    {({ selected }) => (
+                      <>
+                        <span
+                          className={`block truncate  ${
+                            selected ? 'font-bold' : 'font-light'
+                          }`}
+                        >
+                          {category.name}
+                          <sup>a</sup>
+                        </span>
+                        {selected ? (
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-600">
+                            <CheckIcon className="h-5 w-5" aria-hidden="true" />
                           </span>
-                          {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-600">
-                              <CheckIcon
-                                className="h-5 w-5"
-                                aria-hidden="true"
-                              />
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                    </Listbox.Option>
-                  ))}
-                </Listbox.Options>
-              </Transition>
-            </div>
+                        ) : undefined}
+                      </>
+                    )}
+                  </Listbox.Option>
+                ))}
+              </Listbox.Options>
+            </Transition>
           </Listbox>
         )}
 
         {/* Extra entrances input field for Entrate */}
-        {type === 'Entrate' && (
-          <input
+        {section === 'Entrate' && (
+          <InputField
+            id="extraEntrances"
             type="number"
-            placeholder="Entrate Extra"
-            min={1}
+            label="entrate"
             value={row.extraEntrances ?? ''}
-            onChange={(e) =>
-              updateRow(index, 'extraEntrances', Number(e.target.value))
+            width="w-1/4"
+            onChange={(event) =>
+              updateRow(index, 'extraEntrances', Number(event.target.value))
             }
-            className={`w-1/4 rounded-lg bg-white px-3 py-2 text-left shadow-md invalid:ring-2 invalid:ring-red-500 invalid:focus-visible:outline-none disabled:bg-gray-200 sm:text-sm ${row.error?.field === 'extraEntrances' ? 'ring-2 ring-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500' : ''}`}
+            props={{
+              min: 1,
+              disabled: !row.from,
+              placeholder: '...',
+            }}
           />
         )}
 
-        {type === 'Cabina privata' && <div className="w-1/4"></div>}
+        {section === 'Cabina privata' && <div className="w-1/4"></div>}
 
         {/* Add, clear and remove row buttons */}
         <div className="ml-1 flex w-[12.5%] flex-col items-center justify-start gap-2 sm:flex-row">
-          {/* <button
-            onClick={addRow}
-            disabled={isDisabled(type, row)}
-            className="inline-flex items-center rounded-lg bg-green-500 px-4 py-2 font-bold text-white shadow-md hover:bg-green-700 disabled:bg-gray-300"
-            title="Aggiungi una riga"
-          >
-            <PlusIcon className="h-5 w-5" />
-          </button> */}
-          <button
+          <Button
             onClick={() => updateRow(index, 'clear', '')}
             disabled={!rowHasData(row)}
-            className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 font-bold text-white shadow-md hover:bg-yellow-700 disabled:bg-gray-300"
+            color="yellow"
             title="Pulisci questa riga"
-          >
-            <ArrowPathIcon className="h-5 w-5" />
-          </button>
+            Icon={ArrowPathIcon}
+          />
           {index !== 0 && (
-            <button
+            <Button
               onClick={() => removeRow(index)}
-              className="inline-flex items-center rounded-lg bg-red-500 px-4 py-2 font-bold text-white shadow-md hover:bg-red-700"
+              color="red"
               title="Rimuovi questa riga"
-            >
-              <TrashIcon className="h-5 w-5" />
-            </button>
+              Icon={TrashIcon}
+            />
           )}
         </div>
       </div>

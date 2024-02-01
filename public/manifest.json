@@ -19,8 +19,8 @@
   "display": "standalone",
   "dir": "auto",
   "lang": "it-IT",
-  "name": "Calcolatore Permanenza Spiaggia",
-  "short_name": "Calc Spiaggia",
+  "name": "Calcolatore Spiaggia",
+  "short_name": "BeachCalc",
   "start_url": "/beach-calc/",
   "scope": "/beach-calc/",
   "description": "Calcolatore prezzo permanenza clienti in spiaggia"

@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
-const APP_NAME = 'Calc Spiaggia'
-const APP_DEFAULT_TITLE = 'Calcolatore spiaggia'
-const APP_TITLE_TEMPLATE = '%s - CalcSpiaggia'
+const APP_NAME = 'BeachCalc'
+const APP_DEFAULT_TITLE = 'Calcolatore Spiaggia'
+const APP_TITLE_TEMPLATE = '%s - BeachCalc'
 const APP_DESCRIPTION = 'Calcolatore prezzo permanenza clienti in spiaggia'
 
 export const metadata: Metadata = {
