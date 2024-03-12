@@ -2,17 +2,17 @@
 
 import {
   ArrowPathIcon,
+  DocumentArrowDownIcon,
   DocumentArrowUpIcon,
   TrashIcon,
-  DocumentArrowDownIcon,
 } from '@heroicons/react/20/solid'
 import { useLocalStorage } from '@uidotdev/usehooks'
 import { fileOpen, fileSave } from 'browser-fs-access'
 import { useState } from 'react'
-import { Dialog as MyDialog } from './Dialog'
-import { Toaster } from './Toaster'
 import Button from './Button'
+import { Dialog as MyDialog } from './Dialog'
 import { InputField } from './InputField'
+import { Toaster } from './Toaster'
 
 export type Category = { id: number; name: string; price: number }
 
@@ -391,15 +391,17 @@ const Settings = () => {
             let onChange
 
             switch (field.id) {
-              case 'totCategories':
+              case 'totCategories': {
                 value = bufferSettings.periods[0].categories.length ?? ''
                 onChange = handleCategoryChange
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
                 }
+
                 break
-              case 'totPeriods':
+              }
+              case 'totPeriods': {
                 value = bufferSettings.periods.length ?? ''
                 onChange = handlePeriodChange
                 field.props = {
@@ -407,11 +409,14 @@ const Settings = () => {
                   disabled: !bufferSettings.closingDate,
                 }
                 break
-              case 'closingDate':
+              }
+              case 'closingDate': {
                 value = bufferSettings.closingDate
                 onChange = handleClosingDateChange
+
                 break
-              case 'price-entrance':
+              }
+              case 'price-entrance': {
                 value =
                   bufferSettings.priceEntrance > 0
                     ? bufferSettings.priceEntrance.toFixed(2)
@@ -421,8 +426,10 @@ const Settings = () => {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
                 }
+
                 break
-              case 'price-booth':
+              }
+              case 'price-booth': {
                 value =
                   bufferSettings.priceBooth > 0
                     ? bufferSettings.priceBooth.toFixed(2)
@@ -432,9 +439,12 @@ const Settings = () => {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
                 }
+
                 break
-              default:
+              }
+              default: {
                 break
+              }
             }
 
             return (
@@ -501,24 +511,28 @@ const Settings = () => {
           let disabled
 
           switch (index) {
-            case 0:
+            case 0: {
               onClick = () => setBufferSettings(settings)
               disabled = !isBufferDifferentFrom(settings)
               break
-            case 1:
+            }
+            case 1: {
               onClick = openResetDialog
               disabled = !isBufferDifferentFrom(defaultSettings)
               break
-            case 2:
+            }
+            case 2: {
               onClick = () => handleSave()
               disabled = !(
                 isBufferDifferentFrom(settings) &&
                 isValidSettings(bufferSettings)
               )
               break
-            case 3:
+            }
+            case 3: {
               onClick = () => handleOpen()
               break
+            }
           }
 
           return (
