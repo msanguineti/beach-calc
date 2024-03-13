@@ -85,6 +85,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           width="w-1/4 max-w-40"
           onChange={(event) => updateRow(index, 'from', event.target.value)}
           props={{
+            title: 'Inserisci la data di inizio',
             min:
               section === 'Permanenza'
                 ? settings.periods[0].start
@@ -105,6 +106,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           width="w-1/4 max-w-40"
           onChange={(event) => updateRow(index, 'to', event.target.value)}
           props={{
+            title: 'Inserisci la data di fine',
             min: row.from,
             disabled: !row.from,
             max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
@@ -119,6 +121,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
             disabled={!row.from || settings.periods[0].categories.length === 0}
             as={'div'}
             className="relative flex w-1/4 max-w-40 flex-col rounded-lg bg-white p-2 shadow ui-disabled:bg-gray-200 ui-disabled:text-jet-800"
+            title="Seleziona una categoria di permanenza"
           >
             <label
               htmlFor="category"
@@ -193,6 +196,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
               updateRow(index, 'extraEntrances', Number(event.target.value))
             }
             props={{
+              title: 'Inserisci il numero di entrate extra',
               min: 1,
               disabled: !row.from,
               placeholder: '...',
@@ -200,6 +204,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           />
         )}
 
+        {/* Spacer for Cabina privata */}
         {section === 'Cabina privata' && <div className="w-1/4 max-w-40"></div>}
 
         {/* Add, clear and remove row buttons */}
