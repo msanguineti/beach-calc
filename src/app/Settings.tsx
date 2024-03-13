@@ -23,6 +23,8 @@ export type SettingsType = {
   priceEntrance: number
   priceBooth: number
   closingDate: string
+  priceDiscount: number
+  daysNoDiscount: number
 }
 
 export const defaultSettings: SettingsType = {
@@ -30,6 +32,8 @@ export const defaultSettings: SettingsType = {
   priceEntrance: 0,
   priceBooth: 0,
   closingDate: '',
+  priceDiscount: 5,
+  daysNoDiscount: 15,
 }
 
 export const isValidSettings = (settings: SettingsType) =>
@@ -54,6 +58,12 @@ const inputFieldData: {
   props?: Record<string, unknown>
 }[] = [
   {
+    id: 'closingDate',
+    type: 'date',
+    label: 'data chiusura',
+    width: 'w-40',
+  },
+  {
     id: 'totCategories',
     type: 'number',
     label: 'categorie',
@@ -68,24 +78,32 @@ const inputFieldData: {
     props: { min: 1, placeholder: '...' },
   },
   {
-    id: 'closingDate',
-    type: 'date',
-    label: 'data chiusura',
-    width: 'w-40',
-  },
-  {
     id: 'price-entrance',
     type: 'number',
-    label: 'entrata giornaliero',
-    width: 'w-40',
-    props: { min: 0, step: 0.5, placeholder: '0.00' },
+    label: 'entrata',
+    width: 'max-w-[76px]',
+    props: { min: 0, step: 0.5, placeholder: '€' },
   },
   {
     id: 'price-booth',
     type: 'number',
-    label: 'cabina giornaliero',
-    width: 'w-40',
-    props: { min: 0, step: 0.5, placeholder: '0.00' },
+    label: 'cabina',
+    width: 'max-w-[76px]',
+    props: { min: 0, step: 0.5, placeholder: '€' },
+  },
+  {
+    id: 'price-discount',
+    type: 'number',
+    label: 'sconto',
+    width: 'max-w-[76px]',
+    props: { min: 0, step: 0.5, placeholder: '€' },
+  },
+  {
+    id: 'days-no-discount',
+    type: 'number',
+    label: 'gg senza sconto',
+    width: 'w-32',
+    props: { min: 0, step: 1, placeholder: '...' },
   },
 ]
 
@@ -274,22 +292,63 @@ const Settings = () => {
     })
   }
 
-  const handlePriceEntranceChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      newSettings.priceEntrance = Number(event.target.value)
-      return newSettings
-    })
-  }
+  // const handlePriceEntranceChange = (
+  //   event: React.ChangeEvent<HTMLInputElement>,
+  // ) => {
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     newSettings.priceEntrance = Number(event.target.value)
+  //     return newSettings
+  //   })
+  // }
 
-  const handlePriceBoothChange = (
+  // const handlePriceBoothChange = (
+  //   event: React.ChangeEvent<HTMLInputElement>,
+  // ) => {
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     newSettings.priceBooth = Number(event.target.value)
+  //     return newSettings
+  //   })
+  // }
+
+  // const handlePriceDiscountChange = (
+  //   event: React.ChangeEvent<HTMLInputElement>,
+  // ) => {
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     newSettings.priceDiscount = Number(event.target.value)
+  //     return newSettings
+  //   })
+  // }
+
+  // const handleDaysNoDiscountChange = (
+  //   event: React.ChangeEvent<HTMLInputElement>,
+  // ) => {
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     newSettings.daysNoDiscount = Number(event.target.value)
+  //     return newSettings
+  //   })
+  // }
+
+  // const handleClosingDateChange = (
+  //   event: React.ChangeEvent<HTMLInputElement>,
+  // ) => {
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     newSettings.closingDate = event.target.value
+  //     return newSettings
+  //   })
+  // }
+
+  const handleSimpleChange = (
     event: React.ChangeEvent<HTMLInputElement>,
+    field: keyof SettingsType,
   ) => {
     setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      newSettings.priceBooth = Number(event.target.value)
+      const newSettings: SettingsType = { ...oldSettings }
+      newSettings[field] = event.target.value as never
       return newSettings
     })
   }
@@ -323,18 +382,6 @@ const Settings = () => {
     })
   }
 
-  const handleClosingDateChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      newSettings.closingDate = event.target.value
-      return newSettings
-    })
-
-    // setBufferClosingDate(event.target.value)
-  }
-
   const openResetDialog = () => {
     setIsResetDialogOpen(true)
   }
@@ -352,36 +399,6 @@ const Settings = () => {
   const isBufferDifferentFrom = (other: SettingsType) =>
     JSON.stringify(bufferSettings) !== JSON.stringify(other)
 
-  // const canSaveSettings = () => {
-  //   // Check if all periods have a start date
-  //   const allPeriodsHaveStartDate = bufferSettings.periods.every(
-  //     (period) => period.start !== '',
-  //   )
-  //   // Check if all categories have a price
-  //   const allCategoriesHavePrice = bufferSettings.periods.every((period) =>
-  //     period.categories.every((category) => category.price > 0),
-  //   )
-  //   // Check if the closing date is set
-  //   const closingDateIsSet = bufferSettings.closingDate !== ''
-  //   // Check if the entrance price is set
-  //   const entrancePriceIsSet = bufferSettings.priceEntrance > 0
-  //   // Check if the booth price is set
-  //   const boothPriceIsSet = bufferSettings.priceBooth > 0
-
-  //   // Check that bufferPeriods and periods are not equal
-  //   const periodsAreDifferent =
-  //     JSON.stringify(bufferSettings) !== JSON.stringify(settings)
-
-  //   return (
-  //     allPeriodsHaveStartDate &&
-  //     allCategoriesHavePrice &&
-  //     closingDateIsSet &&
-  //     entrancePriceIsSet &&
-  //     boothPriceIsSet &&
-  //     periodsAreDifferent
-  //   )
-  // }
-
   return (
     <>
       <div className="overflow-x-auto">
@@ -391,6 +408,13 @@ const Settings = () => {
             let onChange
 
             switch (field.id) {
+              case 'closingDate': {
+                value = bufferSettings.closingDate
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSimpleChange(event, 'closingDate')
+
+                break
+              }
               case 'totCategories': {
                 value = bufferSettings.periods[0].categories.length ?? ''
                 onChange = handleCategoryChange
@@ -410,18 +434,13 @@ const Settings = () => {
                 }
                 break
               }
-              case 'closingDate': {
-                value = bufferSettings.closingDate
-                onChange = handleClosingDateChange
-
-                break
-              }
               case 'price-entrance': {
                 value =
                   bufferSettings.priceEntrance > 0
-                    ? bufferSettings.priceEntrance.toFixed(2)
+                    ? Number(bufferSettings.priceEntrance).toFixed(2)
                     : ''
-                onChange = handlePriceEntranceChange
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSimpleChange(event, 'priceEntrance')
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -432,9 +451,38 @@ const Settings = () => {
               case 'price-booth': {
                 value =
                   bufferSettings.priceBooth > 0
-                    ? bufferSettings.priceBooth.toFixed(2)
+                    ? Number(bufferSettings.priceBooth).toFixed(2)
                     : ''
-                onChange = handlePriceBoothChange
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSimpleChange(event, 'priceBooth')
+                field.props = {
+                  ...field.props,
+                  disabled: !bufferSettings.closingDate,
+                }
+
+                break
+              }
+              case 'price-discount': {
+                value =
+                  bufferSettings.priceDiscount > 0
+                    ? Number(bufferSettings.priceDiscount).toFixed(2)
+                    : ''
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSimpleChange(event, 'priceDiscount')
+                field.props = {
+                  ...field.props,
+                  disabled: !bufferSettings.closingDate,
+                }
+
+                break
+              }
+              case 'days-no-discount': {
+                value =
+                  bufferSettings.daysNoDiscount > 0
+                    ? bufferSettings.daysNoDiscount
+                    : ''
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
+                  handleSimpleChange(event, 'daysNoDiscount')
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -497,7 +545,7 @@ const Settings = () => {
                     min: 0,
                     step: 0.5,
                     disabled: !start || !bufferSettings.closingDate,
-                    placeholder: '0.00',
+                    placeholder: '€',
                   }}
                 />
               ))}
@@ -505,7 +553,7 @@ const Settings = () => {
           ))}
         </div>
       </div>
-      <div className="flex justify-end gap-2 border-t-[1px] border-tan py-2">
+      <div className="flex justify-end gap-2 border-t-[1px] border-tan pt-2">
         {buttonConfigs.map((config, index) => {
           let onClick
           let disabled

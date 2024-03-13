@@ -5,319 +5,26 @@ import { ChevronUpIcon } from '@heroicons/react/20/solid'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { useLocalStorage } from '@uidotdev/usehooks'
 import { useCallback, useEffect } from 'react'
-import DisclosureRow, { RowData } from './DisclosureRow'
+import DisclosureRow, {
+  RowData,
+  initializeRow,
+  sections,
+} from './DisclosureRow'
 import { SettingsType, defaultSettings } from './Settings'
-
-const createInitialRow = (): RowData => ({
-  id: Math.floor(Math.random() * 1_000_000),
-})
-
-export type SectionTitle = 'Permanenza' | 'Entrate' | 'Cabina privata'
-
-const sections: SectionTitle[] = ['Permanenza', 'Entrate', 'Cabina privata']
-
-const singularPluralDays = (days: number, singular: string, plural: string) =>
-  days === 1 ? `${days} ${singular}` : `${days} ${plural}`
-
-const findMinMaxDates = (
-  rows: RowData[],
-): { from: string; to: string; sorted: RowData[] } => {
-  const permanenceRows = rows.filter((row) => row.from && row.to)
-
-  if (permanenceRows.length === 0) {
-    return { from: '', to: '', sorted: [] }
-  }
-
-  permanenceRows.sort(
-    (a, b) =>
-      new Date(a.from as string).getTime() -
-      new Date(b.from as string).getTime(),
-  )
-
-  let minFrom = permanenceRows[0]?.from
-  let maxTo = permanenceRows[0]?.to
-
-  for (const row of permanenceRows) {
-    if (
-      row.from &&
-      (!minFrom || new Date(row.from).getTime() < new Date(minFrom).getTime())
-    ) {
-      minFrom = row.from
-    }
-    if (
-      row.to &&
-      (!maxTo || new Date(row.to).getTime() > new Date(maxTo).getTime())
-    ) {
-      maxTo = row.to
-    }
-  }
-
-  return {
-    from: minFrom as string,
-    to: maxTo as string,
-    sorted: permanenceRows,
-  }
-}
-
-/*
-  Given a row: RowData and settings: SettingsType, returns the number of days for each period that the rows covers:
-
-  for example, if the settings are:
-  
-  {
-  periods: Period[]
-  priceEntrance: number
-  priceBooth: number
-  closingDate: string
-}
-
-with Period being:
-
-{ id: number; start: string; categories: Category[] }
-
-and Category being:
-
-{ id: number; name: string; price: number }
-
-example:
-  
-  {
-    periods: [
-      {
-        id: 0,
-        start: '2021-08-01',
-        categories: [
-          { id: 0, name: '1', price: 5 },
-          { id: 1, name: '2', price: 3 },
-        ],
-      },
-      {
-        id: 1,
-        start: '2021-08-15',
-        categories: [
-          { id: 0, name: '1', price: 3 },
-          { id: 1, name: '2', price: 2 },
-        ],
-      },
-      {
-        id: 2,
-        start: '2021-09-01',
-        categories: [
-          { id: 0, name: '1', price: 2 },
-          { id: 1, name: '2', price: 1 },
-        ],
-      },
-    ],
-    priceEntrance: 5,
-    priceBooth: 5,
-    closingDate: '2021-09-31',
-  }
-
-  the function, given a row like:
-  
-    {
-      from: '2021-08-05',
-      to: '2021-08-20',
-      category: '1',
-      extraEntrances: 2,
-      extraBooths: 1,
-    }
-
-  will return:
-
-    [
-      { periodId: 0, days: 10 },
-      { periodId: 1, days: 5 },
-      { periodId: 2, days: 0 },
-    ]
-
-
-*/
-
-const getDaysPerPeriod = (row: RowData, settings: SettingsType) => {
-  const { periods, closingDate } = settings
-  const { from, to } = row
-
-  if (!from || !to) {
-    return []
-  }
-
-  const rowStart = new Date(from).getTime()
-  const rowEnd = new Date(to).getTime()
-
-  const daysPerPeriod = periods.map((period) => {
-    const periodStart = new Date(period.start).getTime()
-    const periodEnd =
-      period.id === periods.length - 1
-        ? new Date(closingDate).getTime()
-        : new Date(
-            new Date(periods[period.id + 1].start).getTime() -
-              24 * 60 * 60 * 1000,
-          ).getTime()
-
-    const start = Math.max(periodStart, rowStart)
-    const end = Math.min(periodEnd, rowEnd)
-
-    const days = Math.max(0, (end - start) / (1000 * 60 * 60 * 24) + 1)
-
-    return { periodId: period.id, days }
-  })
-
-  return daysPerPeriod
-}
-
-const getNumberOfDays = (from: string, to: string) => {
-  if (!from || !to) {
-    return 0
-  }
-
-  const start = new Date(from).getTime()
-  const end = new Date(to).getTime()
-
-  return Math.max(0, (end - start) / (1000 * 60 * 60 * 24) + 1)
-}
-
-function diffStrings(a: string, b: string) {
-  let index = 0
-  while (index < a.length && index < b.length && a[index] === b[index]) {
-    index++
-  }
-  return {
-    commonPrefix: a.slice(0, index),
-    aDiff: a.slice(index),
-    bDiff: b.slice(index),
-  }
-}
-
-const validateFromBeforeTo = (
-  newRows: { [x: string]: RowData[] },
-  section: string,
-  index: number,
-) => {
-  if (newRows[section][index].from && newRows[section][index].to) {
-    return (
-      new Date(newRows[section][index].from as string).getTime() <=
-      new Date(newRows[section][index].to as string).getTime()
-    )
-  }
-  return true
-}
-
-const validateExtraDates = (
-  extraFrom: string,
-  extraTo: string,
-  mergedPermanences: RowData[],
-) => {
-  for (const permanence of mergedPermanences) {
-    const isFromOk =
-      new Date(extraFrom).getTime() >=
-      new Date(permanence.from as string).getTime()
-    const isToOk =
-      new Date(extraTo).getTime() <= new Date(permanence.to as string).getTime()
-
-    if (isFromOk && isToOk) {
-      return true
-    }
-  }
-
-  return false
-}
-
-const hasValidationErrors = (
-  rows: Record<string, RowData[]>,
-  minMax: { from: string; to: string; sorted: RowData[] },
-) => {
-  let hasError = false
-
-  const validateSection = (section: 'Entrate' | 'Cabina privata') => {
-    for (const row of rows[section]) {
-      if (
-        row.from &&
-        (new Date(row.from).getTime() < new Date(minMax.from).getTime() ||
-          new Date(row.from).getTime() > new Date(minMax.to).getTime())
-      ) {
-        row.error = {
-          message:
-            "Errore: La data di inizio deve cadere all'interno dei periodi di permanenza.",
-          field: 'from',
-        }
-        hasError = true
-      } else if (row.from && row.to) {
-        if (validateExtraDates(row.from, row.to, minMax.sorted)) {
-          row.error = undefined
-        } else {
-          row.error = {
-            message:
-              "Errore: Il periodo definito deve cadere all'interno dei periodi di permanenza.",
-            field: 'both',
-          }
-          hasError = true
-        }
-      }
-    }
-  }
-
-  validateSection('Entrate')
-  validateSection('Cabina privata')
-
-  return hasError
-}
+import {
+  Breakdown,
+  calculateTotal,
+  findMinMaxDates,
+  singularPluralDays,
+} from './utilities'
 
 const Calculator = () => {
   const [rows, setRows] = useLocalStorage<Record<string, RowData[]>>(
     'rows',
-    Object.fromEntries(
-      sections.map((section) => [section, [createInitialRow()]]),
-    ),
+    Object.fromEntries(sections.map((section) => [section, [initializeRow()]])),
   )
 
-  /* 
-  an object which contains the breakdown of the total price
-  it should contain categories (e.g. '1', '2', '3', 'Entrate', 'Cabina privata')
-  Each category should be also subdivided by period (Entrate and Cabina privata do not have periods, so they should be a single entry, but Entrate should be have the number of extra entrances)
-  and for each period, the number of days, the unit price and the total price
-  {
-    '1': {
-      '0': {
-        days: 10,
-        unitPrice: 5,
-        totalPrice: 50
-      },
-      '1': {
-        days: 5,
-        unitPrice: 3,
-        totalPrice: 15
-      }
-    },
-    '2': {
-      '0': {
-        days: 10,
-        unitPrice: 5,
-        totalPrice: 50
-      },
-      '1': {
-        days: 5,
-        unitPrice: 3,
-        totalPrice: 15
-      }
-    },
-    'Entrate': {
-      days: 10,
-      numEntrances: 2,
-      unitPrice: 5,
-      totalPrice: 100
-    },
-    'Cabina privata': {
-      days: 10,
-      unitPrice: 5,
-      totalPrice: 50
-    }
-  }
-
-  */
-  const [breakdown, setBreakdown] = useLocalStorage<
-    Record<string, Record<string, Record<string, number> | number>>
-  >('breakdown', {})
+  const [breakdown, setBreakdown] = useLocalStorage<Breakdown>('breakdown', {})
 
   const [total, setGrandTotal] = useLocalStorage<string>('total', '0.00')
 
@@ -331,158 +38,12 @@ const Calculator = () => {
     localStorage.getItem('bufferSettings') ?? JSON.stringify(defaultSettings),
   ) as SettingsType
 
-  const calculateTotal = useCallback(() => {
-    let grandTotal = 0
-    const breakdown: Record<
-      string,
-      Record<string, Record<string, number> | number>
-    > = {}
-    if (!hasValidationErrors(rows, minMax)) {
-      let totDays = 0
-      for (const row of rows['Permanenza']) {
-        const daysPerPeriod = getDaysPerPeriod(row, settings)
-        for (const period of daysPerPeriod) {
-          const category = settings.periods[period.periodId].categories.find(
-            (category) => category.name === row.category,
-          )
-          if (category) {
-            const totalPrice = category.price * period.days
-            // eslint-disable-next-line unicorn/no-negated-condition
-            if (!breakdown[category.name]) {
-              breakdown[category.name] = {
-                [period.periodId]: {
-                  days: period.days,
-                  unitPrice: category.price,
-                  totalPrice: totalPrice,
-                },
-              }
-              // eslint-disable-next-line unicorn/no-negated-condition
-            } else if (!breakdown[category.name][String(period.periodId)]) {
-              breakdown[category.name][period.periodId] = {
-                days: period.days,
-                unitPrice: category.price,
-                totalPrice: totalPrice,
-              }
-            } else {
-              ;(
-                breakdown[category.name][period.periodId] as Record<
-                  string,
-                  number
-                >
-              ).days += period.days
-              ;(
-                breakdown[category.name][period.periodId] as Record<
-                  string,
-                  number
-                >
-              ).totalPrice += totalPrice
-            }
-            totDays += period.days
-            grandTotal += totalPrice
-          }
-        }
-      }
-
-      // special category in breakdown is 'Sconto' which is a reduction on the total price by 5 * (totDays - 15) if totDays > 15
-      if (totDays > 15) {
-        const discountedDays = totDays - 15
-        const totalPrice = 5 * discountedDays * -1
-
-        // eslint-disable-next-line unicorn/no-negated-condition
-        if (!breakdown['Sconto']) {
-          breakdown['Sconto'] = {
-            discountedDays: discountedDays,
-            unitPrice: 5,
-            // should be negative
-            totalPrice: totalPrice,
-          }
-        } else {
-          ;(breakdown['Sconto'].discountedDays as number) = discountedDays
-          ;(breakdown['Sconto'].totalPrice as number) = totalPrice
-        }
-        grandTotal += totalPrice
-      }
-
-      // entrate and cabina privata do not change price depending on periods
-      // calculate the sum total of all the days for each row and multiply by the price
-      for (const row of rows['Entrate']) {
-        const entranceDays = getNumberOfDays(
-          row.from as string,
-          row.to as string,
-        )
-        const entrancePrice =
-          settings.priceEntrance * entranceDays * (row.extraEntrances ?? 0)
-
-        if (
-          entranceDays === 0 ||
-          (row.extraEntrances && row.extraEntrances <= 0)
-        )
-          continue
-
-        // eslint-disable-next-line unicorn/no-negated-condition
-        if (!breakdown['Entrate']) {
-          breakdown['Entrate'] = {
-            [String(row.id)]: {
-              days: entranceDays,
-              numEntrances: row.extraEntrances ?? 0,
-              unitPrice: settings.priceEntrance,
-              totalPrice: entrancePrice,
-            },
-          }
-          // eslint-disable-next-line unicorn/no-negated-condition
-        } else if (!breakdown['Entrate'][row.id]) {
-          breakdown['Entrate'][row.id] = {
-            days: entranceDays,
-            numEntrances: row.extraEntrances ?? 0,
-            unitPrice: settings.priceEntrance,
-            totalPrice: entrancePrice,
-          }
-        } else {
-          ;(breakdown['Entrate'][row.id] as Record<string, number>).days +=
-            entranceDays
-          ;(
-            breakdown['Entrate'][row.id] as Record<string, number>
-          ).totalPrice += entrancePrice
-        }
-
-        grandTotal += entrancePrice
-      }
-
-      for (const row of rows['Cabina privata']) {
-        const boothDays = getNumberOfDays(row.from as string, row.to as string)
-        const boothPrice = settings.priceBooth * boothDays
-
-        if (boothDays === 0) continue
-
-        // eslint-disable-next-line unicorn/no-negated-condition
-        if (!breakdown['Cabina privata']) {
-          breakdown['Cabina privata'] = {
-            days: boothDays,
-            unitPrice: settings.priceBooth,
-            totalPrice: boothPrice,
-          }
-        } else {
-          ;(breakdown['Cabina privata'].days as number) += boothDays
-          ;(breakdown['Cabina privata'].totalPrice as number) += boothPrice
-        }
-        grandTotal += boothPrice
-      }
-    }
-
-    setRows(rows)
-    setBreakdown(breakdown)
-    setGrandTotal(grandTotal.toFixed(2))
-    // setTotal(newTotal.toFixed(2))
-  }, [rows, settings, setRows, setBreakdown, setGrandTotal, minMax])
-
   const handleAddRow = useCallback(
     (section: string) => () => {
       setRows((previousRows) => {
-        // previousRowsReference.current = JSON.stringify(previousRows)
-
         return {
           ...previousRows,
-          [section]: [...previousRows[section], createInitialRow()],
+          [section]: [...previousRows[section], initializeRow()],
         }
       })
     },
@@ -492,7 +53,6 @@ const Calculator = () => {
   const handleRemoveRow = useCallback(
     (section: string) => (index: number) => {
       setRows((previousRows) => {
-        // previousRowsReference.current = JSON.stringify(previousRows)
         const newRows = { ...previousRows }
         newRows[section].splice(index, 1)
 
@@ -513,13 +73,11 @@ const Calculator = () => {
         field: keyof RowData | 'clear',
         value: string | number,
       ) => {
-        // console.log('updating row', section, index, field, value)
         setRows((previousRows) => {
-          // previousRowsReference.current = JSON.stringify(previousRows)
           const newRows = { ...previousRows }
 
           if (field === 'clear') {
-            newRows[section][index] = createInitialRow()
+            newRows[section][index] = initializeRow()
           } else {
             newRows[section][index][field] = value as never
           }
@@ -534,11 +92,7 @@ const Calculator = () => {
     [setRows, setMinMax],
   )
 
-  // const previousRowsReference = useRef<string>('')
-
   const isDisabled = (section: string, row: RowData): boolean | undefined => {
-    // console.log('isDisabled', section, row)
-
     const isValidDateRange =
       Date.parse(row.from ?? '') && Date.parse(row.to ?? '')
 
@@ -562,10 +116,18 @@ const Calculator = () => {
     }
   }
 
-  // update total when rows change
   useEffect(() => {
-    calculateTotal()
-  }, [rows, calculateTotal])
+    const {
+      breakdown,
+      grandTotal,
+    }: { breakdown: Breakdown; grandTotal: number } = calculateTotal(
+      rows,
+      minMax,
+      settings,
+    )
+    setBreakdown(breakdown)
+    setGrandTotal(grandTotal.toFixed(2))
+  }, [rows, settings, setBreakdown, setGrandTotal, minMax])
 
   return (
     <div className="min-w-max overflow-x-auto">
@@ -611,14 +173,17 @@ const Calculator = () => {
           </Disclosure.Panel>
         </Disclosure>
       ))}
-      <div className="mt-4 flex flex-col items-center justify-center gap-2 border-t-[1px] border-tan px-3 py-2">
+      <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-jet shadow">
         {Object.keys(breakdown)
           .filter(
             (key) =>
               key !== 'Sconto' && key !== 'Entrate' && key !== 'Cabina privata',
           )
           .map((key) => {
+            console.log('🚀 ~ .map ~ key:', key)
             return Object.keys(breakdown[key]).map((periodId) => {
+              console.log('🚀 ~ returnObject.keys ~ periodId:', periodId)
+              console.log('🚀 ~ returnObject.keys ~ key:', key)
               const days = (breakdown[key][periodId] as Record<string, number>)
                 .days
 
@@ -630,7 +195,7 @@ const Calculator = () => {
                   key={key + periodId}
                   className="flex w-full items-center justify-end"
                 >
-                  <p className="text-right text-lg font-bold text-jet/80">
+                  <p className="text-right text-lg">
                     Permanenza {Number(periodId) + 1}&ordm; periodo per{' '}
                     {singularPluralDays(days, 'giorno', 'giorni')} a{' '}
                     {
@@ -639,7 +204,7 @@ const Calculator = () => {
                     }
                     €/giorno:
                   </p>
-                  <div className="w-1/3 text-right text-lg font-bold text-jet/80 sm:w-1/6">
+                  <div className="w-1/3 text-right text-lg sm:w-1/6">
                     {(
                       breakdown[key][periodId] as Record<string, number>
                     ).totalPrice.toFixed(2)}{' '}
@@ -651,15 +216,15 @@ const Calculator = () => {
           })}
         {breakdown['Sconto'] && (
           <div className="flex w-full items-center justify-end">
-            <p className="text-right text-lg font-bold text-jet/80">
+            <p className="text-right text-lg">
               {singularPluralDays(
-                (breakdown['Sconto'] as Record<string, number>).discountedDays,
+                (breakdown['Sconto'] as Record<string, number>).days,
                 'giorno scontato',
                 'giorni scontati',
               )}{' '}
-              a -5€/giorno:
+              a -{settings.priceDiscount}€/giorno:
             </p>
-            <div className="w-1/3 text-right text-lg font-bold text-jet/80 sm:w-1/6">
+            <div className="w-1/3 text-right text-lg sm:w-1/6">
               {(breakdown['Sconto'].totalPrice as number).toFixed(2)} &euro;
             </div>
           </div>
@@ -672,11 +237,11 @@ const Calculator = () => {
               breakdown['Entrate'][key] as Record<string, number>
             ).numEntrances
             // eslint-disable-next-line unicorn/no-null
-            if (days === 0) return null
+            if (days === 0 || entrances === 0) return null
 
             return (
               <div key={key} className="flex w-full items-center justify-end">
-                <p className="text-right text-lg font-bold text-jet/80">
+                <p className="text-right text-lg">
                   {singularPluralDays(entrances, 'ingresso', 'ingressi')} extra
                   per {singularPluralDays(days, 'giorno', 'giorni')} a{' '}
                   {
@@ -685,7 +250,7 @@ const Calculator = () => {
                   }
                   €/giorno x ingresso:
                 </p>
-                <div className="w-1/3 text-right text-lg font-bold text-jet/80 sm:w-1/6">
+                <div className="w-1/3 text-right text-lg sm:w-1/6">
                   {(
                     breakdown['Entrate'][key] as Record<string, number>
                   ).totalPrice.toFixed(2)}{' '}
@@ -696,7 +261,7 @@ const Calculator = () => {
           })}
         {breakdown['Cabina privata'] && (
           <div className="flex w-full items-center justify-end">
-            <p className="text-right text-lg font-bold text-jet/80">
+            <p className="text-right text-lg">
               Cabina privata per{' '}
               {singularPluralDays(
                 (breakdown['Cabina privata'] as Record<string, number>).days,
@@ -710,15 +275,15 @@ const Calculator = () => {
               }
               €/giorno:
             </p>
-            <div className="w-1/3 text-right text-lg font-bold text-jet/80 sm:w-1/6">
+            <div className="w-1/3 text-right text-lg sm:w-1/6">
               {(breakdown['Cabina privata'].totalPrice as number).toFixed(2)}{' '}
               &euro;
             </div>
           </div>
         )}
         <div className="flex w-full items-center justify-end">
-          <p className="text-right text-3xl font-bold text-jet">Totale:</p>
-          <div className="w-1/3 text-right text-3xl font-bold text-jet sm:w-1/6">
+          <p className="text-right text-xl font-bold">Totale:</p>
+          <div className="w-1/3 text-right text-xl font-bold sm:w-1/6">
             {total} &euro;
           </div>
         </div>
