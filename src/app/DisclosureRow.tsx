@@ -7,9 +7,19 @@ import {
 } from '@heroicons/react/20/solid'
 import { Fragment, useEffect } from 'react'
 import Button from './Button'
-import { SectionTitle } from './Calculator'
 import { InputField } from './InputField'
 import { SettingsType, defaultSettings, isValidSettings } from './Settings'
+
+export const initializeRow = (): RowData => ({
+  id: Math.floor(Math.random() * 1_000_000),
+})
+
+export type SectionTitle = 'Permanenza' | 'Entrate' | 'Cabina privata'
+export const sections: SectionTitle[] = [
+  'Permanenza',
+  'Entrate',
+  'Cabina privata',
+]
 
 export type RowData = {
   id: number
@@ -72,14 +82,17 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           type="date"
           label="dal"
           value={row.from as string}
-          width="w-1/4"
+          width="w-1/4 max-w-40"
           onChange={(event) => updateRow(index, 'from', event.target.value)}
           props={{
             min:
               section === 'Permanenza'
                 ? settings.periods[0].start
                 : minMax?.from,
-            disabled: !isValidSettings(settings),
+            disabled:
+              section === 'Permanenza'
+                ? !isValidSettings(settings)
+                : !minMax?.from,
             max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
           }}
         />
@@ -89,7 +102,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           type="date"
           label="al"
           value={row.to as string}
-          width="w-1/4"
+          width="w-1/4 max-w-40"
           onChange={(event) => updateRow(index, 'to', event.target.value)}
           props={{
             min: row.from,
@@ -105,7 +118,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
             onChange={(value) => updateRow(index, 'category', value)}
             disabled={!row.from || settings.periods[0].categories.length === 0}
             as={'div'}
-            className="relative flex w-1/4 flex-col rounded-lg bg-white p-2 shadow ui-disabled:bg-gray-200 ui-disabled:text-jet-800"
+            className="relative flex w-1/4 max-w-40 flex-col rounded-lg bg-white p-2 shadow ui-disabled:bg-gray-200 ui-disabled:text-jet-800"
           >
             <label
               htmlFor="category"
@@ -175,7 +188,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
             type="number"
             label="entrate"
             value={row.extraEntrances ?? ''}
-            width="w-1/4"
+            width="w-1/4 max-w-40"
             onChange={(event) =>
               updateRow(index, 'extraEntrances', Number(event.target.value))
             }
@@ -187,7 +200,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           />
         )}
 
-        {section === 'Cabina privata' && <div className="w-1/4"></div>}
+        {section === 'Cabina privata' && <div className="w-1/4 max-w-40"></div>}
 
         {/* Add, clear and remove row buttons */}
         <div className="ml-1 flex w-[12.5%] flex-col items-center justify-start gap-2 sm:flex-row">

@@ -17,8 +17,8 @@ export default function Home() {
         </h1>
       </div>
 
-      <div className="mx-auto w-full max-w-screen-lg flex-grow px-4 lg:px-0">
-        <div className=" rounded-lg bg-ecru-800/90 px-2 pt-1 shadow-md shadow-coffee">
+      <div className="mx-auto w-full max-w-screen-md flex-grow px-4 lg:px-0">
+        <div className=" rounded-lg bg-ecru-800/90 p-2 shadow-md shadow-coffee">
           <ClientOnly>
             <Tabs />
           </ClientOnly>
