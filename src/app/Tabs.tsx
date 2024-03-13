@@ -1,13 +1,15 @@
 'use client'
 
 import { Tab } from '@headlessui/react'
+import Image from 'next/image'
 import Calculator from './Calculator'
 import Settings from './Settings'
+import Bash from './assets/images/bash2.avif'
 
 const tabs = [
   { id: 'calculator', name: 'Conto' },
   { id: 'settings', name: 'Impostazioni' },
-  // { id: 'about', name: 'About' },
+  { id: 'about', name: 'Informazioni' },
 ]
 
 const Tabs = () => (
@@ -32,14 +34,17 @@ const Tabs = () => (
       <Tab.Panel>
         <Settings />
       </Tab.Panel>
-      {/* <Tab.Panel>
-        <div className="flex flex-col items-center justify-center">
-          <h1 className="text-3xl font-bold text-coffee">BAGNI MIRAMARE</h1>
-          <p className="text-lg font-semibold text-tan">
-            Made with ❤️ by GocciaSoft
-          </p>
+      <Tab.Panel>
+        <div className="flex flex-col items-center justify-center p-2">
+          <Image
+            src={Bash}
+            alt="Bash"
+            layout="intrinsic"
+            width={256}
+            height={256}
+          />
         </div>
-      </Tab.Panel> */}
+      </Tab.Panel>
     </Tab.Panels>
   </Tab.Group>
 )

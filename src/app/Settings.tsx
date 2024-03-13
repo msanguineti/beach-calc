@@ -62,48 +62,78 @@ const inputFieldData: {
     type: 'date',
     label: 'data chiusura',
     width: 'w-40',
+    props: { title: 'Inserisci la data di chiusura' },
   },
   {
     id: 'totCategories',
     type: 'number',
     label: 'categorie',
     width: 'max-w-[76px]',
-    props: { min: 1, placeholder: '...' },
+
+    props: {
+      min: 1,
+      placeholder: '...',
+      title: 'Inserisci il numero di categorie',
+    },
   },
   {
     id: 'totPeriods',
     type: 'number',
     label: 'periodi',
     width: 'max-w-[76px]',
-    props: { min: 1, placeholder: '...' },
+    props: {
+      title: 'Inserisci il numero di periodi',
+      min: 1,
+      placeholder: '...',
+    },
   },
   {
     id: 'price-entrance',
     type: 'number',
     label: 'entrata',
     width: 'max-w-[76px]',
-    props: { min: 0, step: 0.5, placeholder: '€' },
+    props: {
+      title: 'Inserisci il prezzo di entrata extra',
+      min: 0,
+      step: 0.5,
+      placeholder: '€',
+    },
   },
   {
     id: 'price-booth',
     type: 'number',
     label: 'cabina',
     width: 'max-w-[76px]',
-    props: { min: 0, step: 0.5, placeholder: '€' },
+    props: {
+      title: 'Inserisci il prezzo della cabina privata',
+      min: 0,
+      step: 0.5,
+      placeholder: '€',
+    },
   },
   {
     id: 'price-discount',
     type: 'number',
     label: 'sconto',
     width: 'max-w-[76px]',
-    props: { min: 0, step: 0.5, placeholder: '€' },
+    props: {
+      title: 'Inserisci lo sconto giornaliero',
+      min: 0,
+      step: 0.5,
+      placeholder: '€',
+    },
   },
   {
     id: 'days-no-discount',
     type: 'number',
     label: 'gg senza sconto',
     width: 'w-32',
-    props: { min: 0, step: 1, placeholder: '...' },
+    props: {
+      title: 'Inserisci il numero di giorni senza sconto',
+      min: 0,
+      step: 1,
+      placeholder: '...',
+    },
   },
 ]
 
@@ -292,91 +322,31 @@ const Settings = () => {
     })
   }
 
-  // const handlePriceEntranceChange = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  // ) => {
-  //   setBufferSettings((oldSettings) => {
-  //     const newSettings = { ...oldSettings }
-  //     newSettings.priceEntrance = Number(event.target.value)
-  //     return newSettings
-  //   })
-  // }
-
-  // const handlePriceBoothChange = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  // ) => {
-  //   setBufferSettings((oldSettings) => {
-  //     const newSettings = { ...oldSettings }
-  //     newSettings.priceBooth = Number(event.target.value)
-  //     return newSettings
-  //   })
-  // }
-
-  // const handlePriceDiscountChange = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  // ) => {
-  //   setBufferSettings((oldSettings) => {
-  //     const newSettings = { ...oldSettings }
-  //     newSettings.priceDiscount = Number(event.target.value)
-  //     return newSettings
-  //   })
-  // }
-
-  // const handleDaysNoDiscountChange = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  // ) => {
-  //   setBufferSettings((oldSettings) => {
-  //     const newSettings = { ...oldSettings }
-  //     newSettings.daysNoDiscount = Number(event.target.value)
-  //     return newSettings
-  //   })
-  // }
-
-  // const handleClosingDateChange = (
-  //   event: React.ChangeEvent<HTMLInputElement>,
-  // ) => {
-  //   setBufferSettings((oldSettings) => {
-  //     const newSettings = { ...oldSettings }
-  //     newSettings.closingDate = event.target.value
-  //     return newSettings
-  //   })
-  // }
-
-  const handleSimpleChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    field: keyof SettingsType,
-  ) => {
-    setBufferSettings((oldSettings) => {
-      const newSettings: SettingsType = { ...oldSettings }
-      newSettings[field] = event.target.value as never
-      return newSettings
-    })
-  }
-
-  const handlePeriodStartChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    index: number,
-  ) => {
+  const handleInputChange = ({
+    event,
+    field,
+    periodsIndex,
+    categoriesIndex,
+  }: {
+    event: React.ChangeEvent<HTMLInputElement>
+    field?: keyof SettingsType
+    periodsIndex?: number
+    categoriesIndex?: number
+  }) => {
     setBufferSettings((oldSettings) => {
       const newSettings = { ...oldSettings }
       const newPeriods = [...oldSettings.periods]
-      newPeriods[index].start = event.target.value
-      newSettings.periods = newPeriods
-      return newSettings
-    })
-  }
-
-  const handleCategoryPriceChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    periodIndex: number,
-    categoryIndex: number,
-  ) => {
-    const newPrice = Number(event.target.value)
-
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      const newPeriods = [...oldSettings.periods]
-      newPeriods[periodIndex].categories[categoryIndex].price = newPrice
+      if (periodsIndex !== undefined && categoriesIndex !== undefined) {
+        // Handle category price change
+        const newPrice = Number(event.target.value)
+        newPeriods[periodsIndex].categories[categoriesIndex].price = newPrice
+      } else if (periodsIndex !== undefined) {
+        // Handle period start change
+        newPeriods[periodsIndex].start = event.target.value
+      } else if (field) {
+        // Handle simple change
+        newSettings[field] = event.target.value as never
+      }
       newSettings.periods = newPeriods
       return newSettings
     })
@@ -411,7 +381,7 @@ const Settings = () => {
               case 'closingDate': {
                 value = bufferSettings.closingDate
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSimpleChange(event, 'closingDate')
+                  handleInputChange({ event, field: 'closingDate' })
 
                 break
               }
@@ -440,7 +410,7 @@ const Settings = () => {
                     ? Number(bufferSettings.priceEntrance).toFixed(2)
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSimpleChange(event, 'priceEntrance')
+                  handleInputChange({ event, field: 'priceEntrance' })
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -454,7 +424,7 @@ const Settings = () => {
                     ? Number(bufferSettings.priceBooth).toFixed(2)
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSimpleChange(event, 'priceBooth')
+                  handleInputChange({ event, field: 'priceBooth' })
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -468,7 +438,7 @@ const Settings = () => {
                     ? Number(bufferSettings.priceDiscount).toFixed(2)
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSimpleChange(event, 'priceDiscount')
+                  handleInputChange({ event, field: 'priceDiscount' })
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -482,7 +452,7 @@ const Settings = () => {
                     ? bufferSettings.daysNoDiscount
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSimpleChange(event, 'daysNoDiscount')
+                  handleInputChange({ event, field: 'daysNoDiscount' })
                 field.props = {
                   ...field.props,
                   disabled: !bufferSettings.closingDate,
@@ -523,11 +493,14 @@ const Settings = () => {
                 label={`Inizio ${id + 1}° periodo`}
                 value={start}
                 width="w-full"
-                onChange={(event) => handlePeriodStartChange(event, id)}
+                onChange={(event) =>
+                  handleInputChange({ event, periodsIndex: id })
+                }
                 props={{
                   min: getPreviousPeriodStart(id, bufferSettings.periods),
                   disabled: !bufferSettings.closingDate,
                   max: bufferSettings.closingDate,
+                  title: `Inserisci la data di inizio del ${id + 1}° periodo`,
                 }}
               />
               {categories.map((category) => (
@@ -539,13 +512,18 @@ const Settings = () => {
                   value={category.price > 0 ? category.price.toFixed(2) : ''}
                   width="w-full"
                   onChange={(event) =>
-                    handleCategoryPriceChange(event, id, category.id)
+                    handleInputChange({
+                      event,
+                      periodsIndex: id,
+                      categoriesIndex: category.id,
+                    })
                   }
                   props={{
                     min: 0,
                     step: 0.5,
                     disabled: !start || !bufferSettings.closingDate,
                     placeholder: '€',
+                    title: `Inserisci il prezzo della ${category.name}ª categoria`,
                   }}
                 />
               ))}

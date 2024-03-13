@@ -180,10 +180,7 @@ const Calculator = () => {
               key !== 'Sconto' && key !== 'Entrate' && key !== 'Cabina privata',
           )
           .map((key) => {
-            console.log('🚀 ~ .map ~ key:', key)
             return Object.keys(breakdown[key]).map((periodId) => {
-              console.log('🚀 ~ returnObject.keys ~ periodId:', periodId)
-              console.log('🚀 ~ returnObject.keys ~ key:', key)
               const days = (breakdown[key][periodId] as Record<string, number>)
                 .days
 
