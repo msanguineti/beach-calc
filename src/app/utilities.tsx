@@ -325,10 +325,9 @@ const calculateDiscount = (
 ) => {
   if (permanenceDays <= settings.daysNoDiscount) return 0
 
-  const totalPrice =
-    -settings.priceDiscount * (permanenceDays - settings.daysNoDiscount)
+  const totalPrice = -settings.priceDiscount * permanenceDays
   updateBreakdown(breakdown, 'Sconto', {
-    days: permanenceDays - settings.daysNoDiscount,
+    days: permanenceDays,
     unitPrice: -settings.priceDiscount,
     totalPrice,
   })
