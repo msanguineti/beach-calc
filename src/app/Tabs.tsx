@@ -3,7 +3,9 @@
 import { Tab } from '@headlessui/react'
 import Image from 'next/image'
 import Calculator from './Calculator'
-import Settings from './Settings'
+import { initializeRow, sections } from './DisclosureRow'
+import Settings, { defaultSettings } from './Settings'
+import StateProvider from './StateProvider'
 import Bash from './assets/images/bash2.avif'
 
 const tabs = [
@@ -11,6 +13,20 @@ const tabs = [
   { id: 'settings', name: 'Impostazioni' },
   { id: 'about', name: 'Informazioni' },
 ]
+
+const initialSettings = {
+  settings: { ...defaultSettings },
+  total: 0,
+  breakdown: {},
+  minMax: {
+    from: '',
+    to: '',
+    sorted: [],
+  },
+  rows: Object.fromEntries(
+    sections.map((section) => [section, [initializeRow()]]),
+  ),
+}
 
 const Tabs = () => (
   <Tab.Group as={'div'}>
@@ -28,23 +44,25 @@ const Tabs = () => (
       </nav>
     </Tab.List>
     <Tab.Panels>
-      <Tab.Panel>
-        <Calculator />
-      </Tab.Panel>
-      <Tab.Panel>
-        <Settings />
-      </Tab.Panel>
-      <Tab.Panel>
-        <div className="flex flex-col items-center justify-center p-2">
-          <Image
-            src={Bash}
-            alt="Bash"
-            layout="intrinsic"
-            width={256}
-            height={256}
-          />
-        </div>
-      </Tab.Panel>
+      <StateProvider initialState={initialSettings}>
+        <Tab.Panel>
+          <Calculator />
+        </Tab.Panel>
+        <Tab.Panel>
+          <Settings />
+        </Tab.Panel>
+        <Tab.Panel>
+          <div className="flex flex-col items-center justify-center p-2">
+            <Image
+              src={Bash}
+              alt="Bash"
+              layout="intrinsic"
+              width={256}
+              height={256}
+            />
+          </div>
+        </Tab.Panel>
+      </StateProvider>
     </Tab.Panels>
   </Tab.Group>
 )

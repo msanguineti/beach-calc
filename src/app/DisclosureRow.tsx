@@ -5,10 +5,11 @@ import {
   ChevronDownIcon,
   TrashIcon,
 } from '@heroicons/react/20/solid'
-import { Fragment, useEffect } from 'react'
+import { Fragment, useContext, useEffect } from 'react'
 import Button from './Button'
 import { InputField } from './InputField'
-import { SettingsType, defaultSettings, isValidSettings } from './Settings'
+import { isValidSettings } from './Settings'
+import StateContext from './StateContext'
 
 export const initializeRow = (): RowData => ({
   id: Math.floor(Math.random() * 1_000_000),
@@ -62,17 +63,15 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
   index,
   updateRow,
   removeRow,
-  minMax,
+  // minMax,
 }) => {
-  const settings: SettingsType = JSON.parse(
-    localStorage.getItem('bufferSettings') ?? JSON.stringify(defaultSettings),
-  ) as SettingsType
+  const [state] = useContext(StateContext)
 
   useEffect(() => {
-    if (rowHasData(row) && !isValidSettings(settings)) {
+    if (rowHasData(row) && !isValidSettings(state.settings)) {
       updateRow(index, 'clear', '')
     }
-  }, [settings, row, index, updateRow])
+  }, [state.settings, row, index, updateRow])
 
   return (
     <Fragment>
@@ -88,13 +87,16 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
             title: 'Inserisci la data di inizio',
             min:
               section === 'Permanenza'
-                ? settings.periods[0].start
-                : minMax?.from,
+                ? state.settings.periods[0].start
+                : state.minMax?.from,
             disabled:
               section === 'Permanenza'
-                ? !isValidSettings(settings)
-                : !minMax?.from,
-            max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
+                ? !isValidSettings(state.settings)
+                : !state.minMax?.from,
+            max:
+              section === 'Permanenza'
+                ? state.settings.closingDate
+                : state.minMax?.to,
           }}
         />
 
@@ -109,7 +111,10 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
             title: 'Inserisci la data di fine',
             min: row.from,
             disabled: !row.from,
-            max: section === 'Permanenza' ? settings.closingDate : minMax?.to,
+            max:
+              section === 'Permanenza'
+                ? state.settings.closingDate
+                : state.minMax?.to,
           }}
         />
 
@@ -118,7 +123,9 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
           <Listbox
             value={row.category}
             onChange={(value) => updateRow(index, 'category', value)}
-            disabled={!row.from || settings.periods[0].categories.length === 0}
+            disabled={
+              !row.from || state.settings.periods[0].categories.length === 0
+            }
             as={'div'}
             className="relative flex w-1/4 max-w-40 flex-col rounded-lg bg-white p-2 shadow ui-disabled:bg-gray-200 ui-disabled:text-jet-800"
             title="Seleziona una categoria di permanenza"
@@ -154,7 +161,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
               leaveTo="opacity-0"
             >
               <Listbox.Options className="absolute -left-0 z-20 mt-14 max-h-60 w-full overflow-auto rounded-md bg-white py-1 shadow-md ring-1 ring-black/5 focus:outline-none">
-                {settings.periods[0].categories.map((category) => (
+                {state.settings.periods[0].categories.map((category) => (
                   <Listbox.Option
                     className="relative cursor-default select-none py-2 pl-10 pr-4 ui-active:bg-amber-100 ui-active:text-amber-900"
                     key={category.id}

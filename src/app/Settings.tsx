@@ -6,13 +6,14 @@ import {
   DocumentArrowUpIcon,
   TrashIcon,
 } from '@heroicons/react/20/solid'
-import { useLocalStorage } from '@uidotdev/usehooks'
 import { fileOpen, fileSave } from 'browser-fs-access'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import Button from './Button'
 import { Dialog as MyDialog } from './Dialog'
 import { InputField } from './InputField'
+import StateContext from './StateContext'
 import { Toaster } from './Toaster'
+import { formatDate, stringToDate, stringToNumber } from './utilities'
 
 export type Category = { id: number; name: string; price: number }
 
@@ -38,7 +39,7 @@ export const defaultSettings: SettingsType = {
 
 export const isValidSettings = (settings: SettingsType) =>
   settings.priceBooth > 0 &&
-  settings.priceEntrance > 0 &&
+  Number(settings.priceEntrance) >= 0 &&
   settings.closingDate !== '' &&
   settings.periods.length > 0 &&
   settings.periods.every(
@@ -48,7 +49,9 @@ export const isValidSettings = (settings: SettingsType) =>
       period.categories.every(
         (category) => category.name && category.price > 0,
       ),
-  )
+  ) &&
+  settings.priceDiscount > 0 &&
+  settings.daysNoDiscount > 0
 
 const inputFieldData: {
   id: string
@@ -89,13 +92,12 @@ const inputFieldData: {
   },
   {
     id: 'price-entrance',
-    type: 'number',
+    type: 'text',
     label: 'entrata',
     width: 'max-w-[76px]',
     props: {
       title: 'Inserisci il prezzo di entrata extra',
-      min: 0,
-      step: 0.5,
+      pattern: '\\d+([,\\.]{1}\\d*)?',
       placeholder: '€',
     },
   },
@@ -107,7 +109,6 @@ const inputFieldData: {
     props: {
       title: 'Inserisci il prezzo della cabina privata',
       min: 0,
-      step: 0.5,
       placeholder: '€',
     },
   },
@@ -119,7 +120,6 @@ const inputFieldData: {
     props: {
       title: 'Inserisci lo sconto giornaliero',
       min: 0,
-      step: 0.5,
       placeholder: '€',
     },
   },
@@ -131,7 +131,6 @@ const inputFieldData: {
     props: {
       title: 'Inserisci il numero di giorni senza sconto',
       min: 0,
-      step: 1,
       placeholder: '...',
     },
   },
@@ -178,26 +177,34 @@ const getPreviousPeriodStart = (index: number, periods: Period[]) => {
   if (index === 0) return ''
 
   const { start: previousPeriodStart } = periods[index - 1]
-  try {
-    const previousDate = new Date(previousPeriodStart)
-    previousDate.setDate(previousDate.getDate() + 1)
 
-    return previousDate.toISOString().split('T')[0]
-  } catch {
-    return ''
-  }
+  const previousDate = stringToDate(previousPeriodStart)
+  if (!previousDate) return ''
+  previousDate.setDate(previousDate.getDate() + 1)
+  return formatDate(previousDate)
+}
+
+const getNextPeriodStartOrClosingDate = (
+  index: number,
+  settings: SettingsType,
+) => {
+  const { start: nextPeriodStart } = settings.periods[index + 1] ?? {}
+  const { closingDate } = settings
+
+  if (!nextPeriodStart) return closingDate
+
+  const nextDate = stringToDate(nextPeriodStart) as Date
+  nextDate.setDate(nextDate.getDate() - 1)
+
+  return nextDate < (stringToDate(closingDate) as Date)
+    ? formatDate(nextDate)
+    : closingDate
 }
 
 const Settings = () => {
-  const [settings, setSettings] = useLocalStorage<SettingsType>(
-    'settings',
-    defaultSettings,
-  )
+  const [settings, setSettings] = useState<SettingsType>(defaultSettings)
 
-  const [bufferSettings, setBufferSettings] = useLocalStorage<SettingsType>(
-    'bufferSettings',
-    settings,
-  )
+  const [state, setState] = useContext(StateContext)
 
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
 
@@ -220,7 +227,12 @@ const Settings = () => {
     const fileContents = await file.text()
     const settings = JSON.parse(fileContents)
     setSettings(settings)
-    setBufferSettings(settings)
+    // setBufferSettings(settings)
+    setState((oldState) => {
+      const newState = { ...oldState }
+      newState.settings = settings
+      return newState
+    })
 
     setToast({
       message: 'Le impostazioni sono state caricate',
@@ -230,9 +242,9 @@ const Settings = () => {
   }
 
   const handleSave = async () => {
-    setSettings(bufferSettings)
+    setSettings(state.settings)
 
-    const blob = new Blob([JSON.stringify(bufferSettings)], {
+    const blob = new Blob([JSON.stringify(state.settings)], {
       type: 'application/json',
     })
     await fileSave(blob, {
@@ -250,75 +262,116 @@ const Settings = () => {
     })
   }
 
-  const handleCategoryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newCount = Number(event.target.value)
+  // const handleCategoryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const newCount = Number(
+  //     event.target.value || defaultSettings.periods[0].categories.length,
+  //   )
 
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      const newPeriods = [...oldSettings.periods]
-      if (newCount > oldSettings.periods[0].categories.length) {
-        // Add new categories
-        for (
-          let index = oldSettings.periods[0].categories.length;
-          index < newCount;
-          index++
-        ) {
-          newPeriods.map((period) => {
-            period.categories.push({
-              id: index,
-              name: `${index + 1}`,
-              price: 0,
-            })
-          })
-        }
-      } else if (newCount < oldSettings.periods[0].categories.length) {
-        // Remove categories
-        // newPeriods[0].categories.splice(newCount)
-        newPeriods.map((period) => {
-          period.categories.splice(newCount)
-        })
-      }
+  //   if (newCount < 1) return
+
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     const newPeriods = [...oldSettings.periods]
+  //     if (newCount > oldSettings.periods[0].categories.length) {
+  //       // Add new categories
+  //       for (
+  //         let index = oldSettings.periods[0].categories.length;
+  //         index < newCount;
+  //         index++
+  //       ) {
+  //         newPeriods.map((period) => {
+  //           period.categories.push({
+  //             id: index,
+  //             name: `${index + 1}`,
+  //             price: 0,
+  //           })
+  //         })
+  //       }
+  //     } else if (newCount < oldSettings.periods[0].categories.length) {
+  //       // Remove categories
+  //       // newPeriods[0].categories.splice(newCount)
+  //       newPeriods.map((period) => {
+  //         period.categories.splice(newCount)
+  //       })
+  //     }
+  //     newSettings.periods = newPeriods
+  //     return newSettings
+  //   })
+  // }
+
+  // const handlePeriodChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const newCount = Number(
+  //     event.target.value || defaultSettings.periods.length,
+  //   )
+
+  //   if (newCount < 1) return
+
+  //   setBufferSettings((oldSettings) => {
+  //     const newSettings = { ...oldSettings }
+  //     const newPeriods = [...oldSettings.periods]
+  //     if (newCount > oldSettings.periods.length) {
+  //       //if the last period has a start date, and this start date is <= than the closing date, then add a new period
+  //       const lastPeriod = oldSettings.periods.at(-1) as Period
+  //       const lastPeriodStartDate = new Date(lastPeriod.start)
+  //       const closingDate = new Date(oldSettings.closingDate)
+  //       if (lastPeriod.start === '' || lastPeriodStartDate >= closingDate)
+  //         return oldSettings
+
+  //       // Add new periods
+  //       for (
+  //         let index = oldSettings.periods.length;
+  //         index < newCount;
+  //         index++
+  //       ) {
+  //         newPeriods.push({
+  //           id: index,
+  //           start: '',
+  //           categories: oldSettings.periods[0].categories.map((category) => ({
+  //             id: category.id,
+  //             name: category.name,
+  //             price: 0,
+  //           })),
+  //         })
+  //       }
+  //     } else if (newCount < oldSettings.periods.length) {
+  //       // Remove periods
+  //       newPeriods.splice(newCount)
+  //     }
+  //     newSettings.periods = newPeriods
+  //     return newSettings
+  //   })
+  // }
+
+  const handlePeriodStartChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    periodsIndex: number,
+  ) => {
+    const value = event.target.value || ''
+    if (value === '') return
+
+    // if the start date is empty, return the old settings
+    // if the start date is <= than the closing date, return the old settings
+    const startDate = new Date(value)
+    const previousDate = new Date(
+      getPreviousPeriodStart(periodsIndex, state.settings.periods),
+    )
+    const closingDate = new Date(
+      getNextPeriodStartOrClosingDate(periodsIndex, state.settings),
+    )
+
+    if (Number.isNaN(startDate.getTime())) return
+
+    if (startDate < previousDate || startDate > closingDate) return
+
+    // Handle period start change
+    setState((oldState) => {
+      const newState = { ...oldState }
+      const newSettings = { ...oldState.settings }
+      const newPeriods = [...newSettings.periods]
+      newPeriods[periodsIndex].start = value
       newSettings.periods = newPeriods
-      return newSettings
-    })
-  }
-
-  const handlePeriodChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newCount = Number(event.target.value)
-
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      const newPeriods = [...oldSettings.periods]
-      if (newCount > oldSettings.periods.length) {
-        //if the last period has a start date, and this start date is <= than the closing date, then add a new period
-        const lastPeriod = oldSettings.periods.at(-1) as Period
-        const lastPeriodStartDate = new Date(lastPeriod.start)
-        const closingDate = new Date(oldSettings.closingDate)
-        if (lastPeriod.start === '' || lastPeriodStartDate >= closingDate)
-          return oldSettings
-
-        // Add new periods
-        for (
-          let index = oldSettings.periods.length;
-          index < newCount;
-          index++
-        ) {
-          newPeriods.push({
-            id: index,
-            start: '',
-            categories: oldSettings.periods[0].categories.map((category) => ({
-              id: category.id,
-              name: category.name,
-              price: 0,
-            })),
-          })
-        }
-      } else if (newCount < oldSettings.periods.length) {
-        // Remove periods
-        newPeriods.splice(newCount)
-      }
-      newSettings.periods = newPeriods
-      return newSettings
+      newState.settings = newSettings
+      return newState
     })
   }
 
@@ -333,22 +386,29 @@ const Settings = () => {
     periodsIndex?: number
     categoriesIndex?: number
   }) => {
-    setBufferSettings((oldSettings) => {
-      const newSettings = { ...oldSettings }
-      const newPeriods = [...oldSettings.periods]
+    setState((oldState) => {
+      const newState = { ...oldState }
+      const newSettings = { ...oldState.settings }
+      const newPeriods = [...newSettings.periods]
       if (periodsIndex !== undefined && categoriesIndex !== undefined) {
         // Handle category price change
-        const newPrice = Number(event.target.value)
+        const newPrice = Number(event.target.value || 0)
+
+        if (newPrice < 0) return oldState
+
         newPeriods[periodsIndex].categories[categoriesIndex].price = newPrice
-      } else if (periodsIndex !== undefined) {
-        // Handle period start change
-        newPeriods[periodsIndex].start = event.target.value
       } else if (field) {
-        // Handle simple change
+        // if field is not closingDate, then the value must be a positive number
+        if (field !== 'closingDate') {
+          const value = Number(event.target.value)
+          if (value < 0) return oldState
+        }
+
         newSettings[field] = event.target.value as never
       }
       newSettings.periods = newPeriods
-      return newSettings
+      newState.settings = newSettings
+      return newState
     })
   }
 
@@ -361,13 +421,19 @@ const Settings = () => {
   }
 
   const resetAllSettings = () => {
+    console.log('🚀 ~ resetAllSettings ~ defaultSettings:', defaultSettings)
     setSettings(defaultSettings)
-    setBufferSettings(defaultSettings)
+    setState((oldState) => {
+      return {
+        ...oldState,
+        settings: defaultSettings,
+      }
+    })
     closeResetDialog()
   }
 
   const isBufferDifferentFrom = (other: SettingsType) =>
-    JSON.stringify(bufferSettings) !== JSON.stringify(other)
+    JSON.stringify(state.settings) !== JSON.stringify(other)
 
   return (
     <>
@@ -376,86 +442,264 @@ const Settings = () => {
           {inputFieldData.map((field) => {
             let value
             let onChange
+            let onBlur
 
             switch (field.id) {
               case 'closingDate': {
-                value = bufferSettings.closingDate
-                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleInputChange({ event, field: 'closingDate' })
+                value = state.settings.closingDate
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                  setState((oldState) => {
+                    const newClosingDate = stringToDate(event.target.value)
+                    if (!newClosingDate) {
+                      setToast({
+                        message: 'Inserisci una data valida',
+                        type: 'warning',
+                        visible: true,
+                      })
+                      return oldState
+                    }
+                    return {
+                      ...oldState,
+                      settings: {
+                        ...oldState.settings,
+                        closingDate: formatDate(newClosingDate),
+                      },
+                    }
+                  })
+                }
 
                 break
               }
               case 'totCategories': {
-                value = bufferSettings.periods[0].categories.length ?? ''
-                onChange = handleCategoryChange
+                value = state.settings.periods[0].categories.length ?? ''
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                  setState((oldState) => {
+                    const newPeriods = [...oldState.settings.periods]
+                    const newCategoryCount = stringToNumber(event.target.value)
+                    if (
+                      Number.isNaN(newCategoryCount) ||
+                      newCategoryCount < 1
+                    ) {
+                      setToast({
+                        message: 'Inserisci un numero valido',
+                        type: 'warning',
+                        visible: true,
+                      })
+                      return oldState
+                    }
+                    if (
+                      newCategoryCount >
+                      oldState.settings.periods[0].categories.length
+                    ) {
+                      // Add new categories
+                      for (
+                        let index =
+                          oldState.settings.periods[0].categories.length;
+                        index < newCategoryCount;
+                        index++
+                      ) {
+                        newPeriods.map((period) => {
+                          period.categories.push({
+                            id: index,
+                            name: `${index + 1}`,
+                            price: 0,
+                          })
+                        })
+                      }
+                    } else if (
+                      newCategoryCount <
+                      oldState.settings.periods[0].categories.length
+                    ) {
+                      newPeriods.map((period) => {
+                        period.categories.splice(newCategoryCount)
+                      })
+                    }
+                    return {
+                      ...oldState,
+                      settings: {
+                        ...oldState.settings,
+                        periods: newPeriods,
+                      },
+                    }
+                  })
+                }
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
 
                 break
               }
               case 'totPeriods': {
-                value = bufferSettings.periods.length ?? ''
-                onChange = handlePeriodChange
+                value = state.settings.periods.length ?? ''
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                  setState((oldState) => {
+                    const newPeriods = [...oldState.settings.periods]
+                    const newPeriodsCount = stringToNumber(event.target.value)
+                    if (Number.isNaN(newPeriodsCount) || newPeriodsCount < 1) {
+                      setToast({
+                        message: 'Inserisci un numero valido',
+                        type: 'warning',
+                        visible: true,
+                      })
+                      return oldState
+                    }
+                    if (newPeriodsCount > oldState.settings.periods.length) {
+                      // Add new periods
+                      for (
+                        let index = oldState.settings.periods.length;
+                        index < newPeriodsCount;
+                        index++
+                      ) {
+                        const lastPeriod = oldState.settings.periods.at(
+                          -1,
+                        ) as Period
+                        const lastPeriodStartDate = new Date(lastPeriod.start)
+                        const closingDate = new Date(
+                          oldState.settings.closingDate,
+                        )
+                        if (lastPeriod.start === '') {
+                          setToast({
+                            message:
+                              "Inserisci una data di inizio per l'ultimo periodo",
+                            type: 'warning',
+                            visible: true,
+                          })
+                          return oldState
+                        } else if (lastPeriodStartDate >= closingDate) {
+                          setToast({
+                            message:
+                              "La data di inizio dell'ultimo periodo deve essere minore della data di chiusura",
+                            type: 'warning',
+                            visible: true,
+                          })
+                          return oldState
+                        }
+                        newPeriods.push({
+                          id: index,
+                          start: '',
+                          categories:
+                            oldState.settings.periods[0].categories.map(
+                              (category) => ({
+                                id: category.id,
+                                name: category.name,
+                                price: 0,
+                              }),
+                            ),
+                        })
+                      }
+                    } else if (
+                      newPeriodsCount < oldState.settings.periods.length
+                    ) {
+                      newPeriods.splice(newPeriodsCount)
+                    }
+                    return {
+                      ...oldState,
+                      settings: {
+                        ...oldState.settings,
+                        periods: newPeriods,
+                      },
+                    }
+                  })
+                }
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
                 break
               }
               case 'price-entrance': {
-                value =
-                  bufferSettings.priceEntrance > 0
-                    ? Number(bufferSettings.priceEntrance).toFixed(2)
-                    : ''
-                onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-                  handleInputChange({ event, field: 'priceEntrance' })
+                value = settings.priceEntrance ?? ''
+                onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                  setSettings((oldSettings) => {
+                    return {
+                      ...oldSettings,
+                      priceEntrance: event.target.value as never,
+                    }
+                  })
+                }
+                onBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+                  console.log('🚀 ~ {inputFieldData.map ~ event:', event)
+
+                  const newPriceEntrance = stringToNumber(
+                    event.target.value,
+                  )
+
+                  if(Number.isNaN(newPriceEntrance) || newPriceEntrance < 0) {
+                    setToast({
+                      message: 'Inserisci un prezzo valido',
+                      type: 'danger',
+                      visible: true,
+                    })
+                    return
+                  }
+
+                  setState((oldState) => {
+                    return {
+                      ...oldState,
+                      settings: {
+                        ...oldState.settings,
+                        priceEntrance: newPriceEntrance,
+                      },
+                    }
+                  })
+
+                  setSettings((oldSettings) => {
+                    return {
+                      ...oldSettings,
+                      priceEntrance: Number.parseFloat(
+                        newPriceEntrance.toFixed(2),
+                      ),
+                    }
+                  })
+
+
+                }
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
 
                 break
               }
               case 'price-booth': {
                 value =
-                  bufferSettings.priceBooth > 0
-                    ? Number(bufferSettings.priceBooth).toFixed(2)
+                  state.settings.priceBooth > 0
+                    ? Number(state.settings.priceBooth).toFixed(2)
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
                   handleInputChange({ event, field: 'priceBooth' })
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
 
                 break
               }
               case 'price-discount': {
                 value =
-                  bufferSettings.priceDiscount > 0
-                    ? Number(bufferSettings.priceDiscount).toFixed(2)
+                  state.settings.priceDiscount >= 0
+                    ? Number(state.settings.priceDiscount).toFixed(2)
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
                   handleInputChange({ event, field: 'priceDiscount' })
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
 
                 break
               }
               case 'days-no-discount': {
                 value =
-                  bufferSettings.daysNoDiscount > 0
-                    ? bufferSettings.daysNoDiscount
+                  state.settings.daysNoDiscount >= 0
+                    ? state.settings.daysNoDiscount
                     : ''
                 onChange = (event: React.ChangeEvent<HTMLInputElement>) =>
                   handleInputChange({ event, field: 'daysNoDiscount' })
                 field.props = {
                   ...field.props,
-                  disabled: !bufferSettings.closingDate,
+                  disabled: !state.settings.closingDate,
                 }
 
                 break
@@ -478,6 +722,9 @@ const Settings = () => {
                     event: React.ChangeEvent<HTMLInputElement>,
                   ) => void
                 }
+                onBlur={
+                  onBlur as (event: React.FocusEvent<HTMLInputElement>) => void
+                }
                 props={field.props}
               />
             )
@@ -485,7 +732,7 @@ const Settings = () => {
         </div>
 
         <div className="mt-4 flex gap-2  pb-4">
-          {bufferSettings.periods.map(({ id, categories, start }) => (
+          {state.settings.periods.map(({ id, categories, start }) => (
             <div key={id} className="flex max-w-40 flex-col gap-2">
               <InputField
                 id="from"
@@ -493,13 +740,11 @@ const Settings = () => {
                 label={`Inizio ${id + 1}° periodo`}
                 value={start}
                 width="w-full"
-                onChange={(event) =>
-                  handleInputChange({ event, periodsIndex: id })
-                }
+                onChange={(event) => handlePeriodStartChange(event, id)}
                 props={{
-                  min: getPreviousPeriodStart(id, bufferSettings.periods),
-                  disabled: !bufferSettings.closingDate,
-                  max: bufferSettings.closingDate,
+                  min: getPreviousPeriodStart(id, state.settings.periods),
+                  disabled: !state.settings.closingDate,
+                  max: getNextPeriodStartOrClosingDate(id, state.settings),
                   title: `Inserisci la data di inizio del ${id + 1}° periodo`,
                 }}
               />
@@ -521,7 +766,7 @@ const Settings = () => {
                   props={{
                     min: 0,
                     step: 0.5,
-                    disabled: !start || !bufferSettings.closingDate,
+                    disabled: !start || !state.settings.closingDate,
                     placeholder: '€',
                     title: `Inserisci il prezzo della ${category.name}ª categoria`,
                   }}
@@ -538,7 +783,13 @@ const Settings = () => {
 
           switch (index) {
             case 0: {
-              onClick = () => setBufferSettings(settings)
+              // onClick = () => setBufferSettings(settings)
+              onClick = () =>
+                setState((oldState) => {
+                  const newState = { ...oldState }
+                  newState.settings = { ...settings }
+                  return newState
+                })
               disabled = !isBufferDifferentFrom(settings)
               break
             }
@@ -551,7 +802,7 @@ const Settings = () => {
               onClick = () => handleSave()
               disabled = !(
                 isBufferDifferentFrom(settings) &&
-                isValidSettings(bufferSettings)
+                isValidSettings(state.settings)
               )
               break
             }

@@ -411,3 +411,16 @@ export const calculateTotal = (
   }
   return { breakdown, grandTotal }
 }
+
+export const stringToDate = (value: string) => {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+export const formatDate = (date: Date) => date.toISOString().split('T')[0]
+
+export const stringToNumber = (value: string) => {
+  const number = Number.parseFloat(value.replace(',', '.'))
+
+  return Number.isNaN(number) ? Number.NaN : number
+}
