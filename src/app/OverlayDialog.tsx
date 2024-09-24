@@ -1,4 +1,10 @@
-import { Dialog as UIDialog, Transition } from '@headlessui/react'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from '@headlessui/react'
 import { Fragment } from 'react'
 
 // eslint-disable-next-line unicorn/prevent-abbreviations
@@ -12,7 +18,7 @@ interface DialogProps {
   onCancel?: () => void
 }
 
-export const Dialog: React.FC<DialogProps> = ({
+export const OverlayDialog: React.FC<DialogProps> = ({
   isOpen,
   title,
   description,
@@ -30,8 +36,8 @@ export const Dialog: React.FC<DialogProps> = ({
   }
 
   return (
-    <Transition.Root show={isOpen} as={Fragment}>
-      <UIDialog
+    <Transition show={isOpen} as={Fragment}>
+      <Dialog
         as="div"
         static
         className="fixed inset-0 z-10 overflow-y-auto"
@@ -39,7 +45,7 @@ export const Dialog: React.FC<DialogProps> = ({
         onClose={() => {}}
       >
         <div className="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0">
-          <UIDialog.Overlay className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+          <DialogBackdrop className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
 
           <span
             className="hidden sm:inline-block sm:h-screen sm:align-middle"
@@ -48,7 +54,7 @@ export const Dialog: React.FC<DialogProps> = ({
             &#8203;
           </span>
 
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="ease-out duration-300"
             enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -58,12 +64,12 @@ export const Dialog: React.FC<DialogProps> = ({
             leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
             <div className="inline-block transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
-              <UIDialog.Title
+              <DialogTitle
                 as="h3"
                 className="text-lg font-medium leading-6 text-gray-900"
               >
                 {title}
-              </UIDialog.Title>
+              </DialogTitle>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">{description}</p>
               </div>
@@ -87,9 +93,9 @@ export const Dialog: React.FC<DialogProps> = ({
                 )}
               </div>
             </div>
-          </Transition.Child>
+          </TransitionChild>
         </div>
-      </UIDialog>
-    </Transition.Root>
+      </Dialog>
+    </Transition>
   )
 }
