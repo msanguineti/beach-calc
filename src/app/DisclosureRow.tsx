@@ -71,7 +71,7 @@ const DisclosureRow: React.FC<DisclosureRowProps> = ({
   minMax,
 }) => {
   const settings: SettingsType = JSON.parse(
-    localStorage.getItem('bufferSettings') ?? JSON.stringify(defaultSettings),
+    localStorage.getItem('settings') ?? JSON.stringify(defaultSettings),
   ) as SettingsType
 
   useEffect(() => {

@@ -39,7 +39,7 @@ const Calculator = () => {
   }>('minMax', { from: '', to: '', sorted: [] })
 
   const settings: SettingsType = JSON.parse(
-    localStorage.getItem('bufferSettings') ?? JSON.stringify(defaultSettings),
+    localStorage.getItem('settings') ?? JSON.stringify(defaultSettings),
   ) as SettingsType
 
   const handleAddRow = useCallback(

@@ -194,10 +194,7 @@ const Settings = () => {
     defaultSettings,
   )
 
-  const [bufferSettings, setBufferSettings] = useLocalStorage<SettingsType>(
-    'bufferSettings',
-    settings,
-  )
+  const [bufferSettings, setBufferSettings] = useState<SettingsType>(settings)
 
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
 
@@ -208,25 +205,49 @@ const Settings = () => {
   }>({ message: '', type: 'success', visible: false })
 
   const handleOpen = async () => {
-    const file = await fileOpen({
-      description: 'Carica le impostazioni',
-      extensions: ['.json'],
-      mimeTypes: ['application/json'],
-      startIn: 'documents',
-    })
+    try {
+      const file = await fileOpen({
+        description: 'Carica le impostazioni',
+        extensions: ['.json'],
+        mimeTypes: ['application/json'],
+        startIn: 'documents',
+      })
 
-    if (!file) return
+      if (!file) {
+        console.error('No file selected')
+        return
+      }
 
-    const fileContents = await file.text()
-    const settings = JSON.parse(fileContents)
-    setSettings(settings)
-    setBufferSettings(settings)
+      const fileContents = await file.text()
+      const settings = JSON.parse(fileContents)
 
-    setToast({
-      message: 'Le impostazioni sono state caricate',
-      type: 'success',
-      visible: true,
-    })
+      // Validate the settings before applying them
+      if (!isValidSettings(settings)) {
+        console.error('Invalid settings format', settings)
+        setToast({
+          message: 'Formato delle impostazioni non valido',
+          type: 'danger',
+          visible: true,
+        })
+        return
+      }
+
+      setSettings(settings)
+      setBufferSettings(settings)
+
+      setToast({
+        message: 'Le impostazioni sono state caricate',
+        type: 'success',
+        visible: true,
+      })
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      setToast({
+        message: 'Errore durante il caricamento delle impostazioni',
+        type: 'danger',
+        visible: true,
+      })
+    }
   }
 
   const handleSave = async () => {
@@ -273,7 +294,6 @@ const Settings = () => {
         }
       } else if (newCount < oldSettings.periods[0].categories.length) {
         // Remove categories
-        // newPeriods[0].categories.splice(newCount)
         newPeriods.map((period) => {
           period.categories.splice(newCount)
         })
