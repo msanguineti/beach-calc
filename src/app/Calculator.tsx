@@ -1,6 +1,10 @@
 'use client'
 
-import { Disclosure } from '@headlessui/react'
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from '@headlessui/react'
 import { ChevronUpIcon } from '@heroicons/react/20/solid'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { useLocalStorage } from '@uidotdev/usehooks'
@@ -138,11 +142,11 @@ const Calculator = () => {
           defaultOpen={index === 0 || rows[section][0].from !== undefined}
           key={section}
         >
-          <Disclosure.Button className="bg-primary flex w-full justify-between rounded-lg rounded-b-none px-4 py-2 text-left font-semibold text-coffee hover:bg-gradient-to-b hover:from-tan focus:outline-none focus-visible:ring focus-visible:ring-tan">
+          <DisclosureButton className="bg-primary flex w-full justify-between rounded-lg rounded-b-none px-4 py-2 text-left font-semibold text-coffee hover:bg-gradient-to-b hover:from-tan focus:outline-none focus-visible:ring focus-visible:ring-tan">
             <span>{section}</span>
             <ChevronUpIcon className="h-8 w-8 transform text-coffee ui-open:rotate-180 ui-open:transform" />
-          </Disclosure.Button>
-          <Disclosure.Panel className="flex flex-col items-center justify-center text-jet sm:flex-row">
+          </DisclosureButton>
+          <DisclosurePanel className="flex flex-col items-center justify-center text-jet sm:flex-row">
             <div className="w-11/12 pl-1.5">
               {rows[section].map((row, index) => (
                 <DisclosureRow
@@ -170,7 +174,7 @@ const Calculator = () => {
                 <PlusIcon className="h-5 w-5" />
               </button>
             </div>
-          </Disclosure.Panel>
+          </DisclosurePanel>
         </Disclosure>
       ))}
       <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-jet shadow">

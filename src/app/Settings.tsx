@@ -10,8 +10,8 @@ import { useLocalStorage } from '@uidotdev/usehooks'
 import { fileOpen, fileSave } from 'browser-fs-access'
 import { useState } from 'react'
 import Button from './Button'
-import { Dialog as MyDialog } from './Dialog'
 import { InputField } from './InputField'
+import { OverlayDialog } from './OverlayDialog'
 import { Toaster } from './Toaster'
 
 export type Category = { id: number; name: string; price: number }
@@ -484,7 +484,7 @@ const Settings = () => {
           })}
         </div>
 
-        <div className="mt-4 flex gap-2  pb-4">
+        <div className="mt-4 flex gap-2 pb-4">
           {bufferSettings.periods.map(({ id, categories, start }) => (
             <div key={id} className="flex max-w-40 flex-col gap-2">
               <InputField
@@ -580,7 +580,7 @@ const Settings = () => {
         visible={toast.visible}
         onClose={() => setToast({ ...toast, visible: false })}
       />
-      <MyDialog
+      <OverlayDialog
         title="Ripristina impostazioni"
         description="Sei sicuro di voler ripristinare le impostazioni ai valori iniziali di default? Questa azione è irreversibile. Tutti i dati precedentemente salvati verranno persi."
         confirmText="Sì, ripristina"
